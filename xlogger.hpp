@@ -83,7 +83,7 @@ public:
       std::cout << xlogger_color_map[CYAN] << "[DEBUG";
       break;
     case WARN:
-      std::cout << xlogger_color_map[YELLOW]<< "[WARN";
+      std::cout << xlogger_color_map[YELLOW] << "[WARN";
       break;
     case CRITICAL:
       std::cout << xlogger_color_map[MAGENTA] << "[CRITICAL";
@@ -102,30 +102,29 @@ public:
     std::cout << "\n";
   }
 };
+static xlogger *logger = new xlogger();
 } // namespace xlogger
 
-static xlogger::xlogger *logger = new xlogger::xlogger();
-
 #define INFO_X_LOG(...)                                                        \
-  logger->set_log_level(xlogger::xlogger_log_level::INFO);                     \
-  logger->log_multi(__VA_ARGS__)
+  xlogger::logger->set_log_level(xlogger::xlogger_log_level::INFO);            \
+  xlogger::logger->log_multi(__VA_ARGS__)
 
 #define DEBUG_X_LOG(...)                                                       \
-  logger->set_log_level(xlogger::xlogger_log_level::DEBUG);                    \
-  logger->log_multi(__VA_ARGS__)
+  xlogger::logger->set_log_level(xlogger::xlogger_log_level::DEBUG);           \
+  xlogger::logger->log_multi(__VA_ARGS__)
 
 #define WARN_X_LOG(...)                                                        \
-  logger->set_log_level(xlogger::xlogger_log_level::WARN);                     \
-  logger->log_multi(__VA_ARGS__)
+  xlogger::logger->set_log_level(xlogger::xlogger_log_level::WARN);            \
+  xlogger::logger->log_multi(__VA_ARGS__)
 
 #define CRITICAL_X_LOG(...)                                                    \
-  logger->set_log_level(xlogger::xlogger_log_level::CRITICAL);                 \
-  logger->log_multi(__VA_ARGS__)
+  xlogger::logger->set_log_level(xlogger::xlogger_log_level::CRITICAL);        \
+  xlogger::logger->log_multi(__VA_ARGS__)
 
 #define ERROR_X_LOG(...)                                                       \
-  logger->set_log_level(xlogger::xlogger_log_level::ERROR);                    \
-  logger->log_multi(__VA_ARGS__)
+  xlogger::logger->set_log_level(xlogger::xlogger_log_level::ERROR);           \
+  xlogger::logger->log_multi(__VA_ARGS__)
 
 #define FATAL_X_LOG(...)                                                       \
-  logger->set_log_level(xlogger::xlogger_log_level::FATAL);                    \
-  logger->log_multi(__VA_ARGS__)
+  xlogger::logger->set_log_level(xlogger::xlogger_log_level::FATAL);           \
+  xlogger::logger->log_multi(__VA_ARGS__)
