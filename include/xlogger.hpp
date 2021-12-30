@@ -5,6 +5,8 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <mutex>
+#include <sstream>
 #include <unordered_map>
 
 namespace xlogger {
@@ -30,34 +32,13 @@ enum xlogger_color {
 
 enum xlogger_log_level { _INFO, _DEBUG, _WARN, _CRITICAL, _ERROR, _FATAL };
 
-class xlogger {
+class xlogger_core {
 private:
-  static xlogger *_logger;
   xlogger_log_level _log_level;
-  bool _enable_file_log;
-  std::ofstream *_file_handler;
-  std::string _filepath;
   std::unordered_map<xlogger_color, std::string> _xlogger_color_map;
 
-  template <typename Args> void log_single(Args &&arg) {
-    std::cout << " " << std::forward<decltype(arg)>(arg);
-    if (_enable_file_log)
-      *_file_handler << " " << std::forward<decltype(arg)>(arg);
-  }
-
-  std::string get_timestamp() {
-    auto current_instant = std::chrono::system_clock::now();
-    auto current_instant_time_t =
-        std::chrono::system_clock::to_time_t(current_instant);
-    const char *x = std::ctime(&current_instant_time_t);
-    std::string timestamp;
-    for (int i = 0; x[i] != '\n'; i++)
-      timestamp.push_back(x[i]);
-    return timestamp;
-  }
-
 public:
-  xlogger() : _enable_file_log(false), _filepath("log_0.xlog") {
+  xlogger_core() {
     _xlogger_color_map[_RESET] = "\033[0m";
     _xlogger_color_map[_BLACK] = "\033[30m";
     _xlogger_color_map[_RED] = "\033[31m";
@@ -77,77 +58,184 @@ public:
     _xlogger_color_map[_BOLD_WHITE] = "\033[1m\033[37m";
   }
 
-  virtual ~xlogger() {}
+  virtual ~xlogger_core() {}
 
   inline xlogger_log_level get_log_level() const { return this->_log_level; }
 
-  inline void set_log_level(xlogger_log_level log_level) {
+  virtual inline void set_log_level(const xlogger_log_level &log_level) {
     this->_log_level = log_level;
   }
 
-  inline const std::string &get_filepath() const { return this->_filepath; }
-
-  inline void set_filepath(const std::string &filepath) {
-    this->_filepath = filepath;
+  inline std::string get_xlogger_color(const xlogger_color &color) {
+    return this->_xlogger_color_map[color];
   }
 
-  inline void set_enable_file_log(bool enable_file_log) {
-    this->_enable_file_log = enable_file_log;
-    _file_handler = new std::ofstream(this->_filepath, std::ios::out);
+  const std::string get_timestamp() {
+    auto current_instant = std::chrono::system_clock::now();
+    auto current_instant_time_t =
+        std::chrono::system_clock::to_time_t(current_instant);
+    const char *x = std::ctime(&current_instant_time_t);
+    std::string timestamp;
+    for (int i = 0; x[i] != '\n'; i++)
+      timestamp.push_back(x[i]);
+    return timestamp;
+  }
+};
+
+class xfile_logger : public xlogger_core {
+private:
+  std::ofstream *_file_handler;
+  std::string _filepath;
+
+  template <typename Args> void log(Args &&arg) {
+    *_file_handler << std::forward<decltype(arg)>(arg);
+  }
+
+public:
+  xfile_logger() { _file_handler = new std::ofstream(); }
+
+  xfile_logger(const std::string &filepath) : _filepath(filepath) {
+    _file_handler = new std::ofstream();
+    _file_handler->open(_filepath);
+  }
+
+  virtual ~xfile_logger() {
+    if (_file_handler->is_open())
+      _file_handler->close();
+  }
+
+  template <typename... Args> void logger(Args &&...args) {
+    switch (get_log_level()) {
+    case _INFO:
+      log("[INFO");
+      break;
+
+    case _DEBUG:
+      log("[DEBUG");
+      break;
+
+    case _WARN:
+      log("[WARN");
+      break;
+
+    case _CRITICAL:
+      log("[CRITICAL");
+      break;
+
+    case _ERROR:
+      log("[ERROR");
+      break;
+
+    case _FATAL:
+      log("[FATAL");
+      break;
+
+    default:
+      log("[INFO");
+      break;
+    }
+    log(": " + get_timestamp() + "] ");
+    (log(std::forward<Args>(args)), ...);
+    log("\n");
+  }
+};
+
+class xconsole_logger : public xlogger_core {
+private:
+  template <typename Args> void log(Args &&arg) {
+    std::cout << std::forward<decltype(arg)>(arg);
+  }
+
+public:
+  xconsole_logger() {}
+  virtual ~xconsole_logger() {}
+
+  template <typename... Args> void logger(Args &&...args) {
+    switch (get_log_level()) {
+    case _INFO:
+      log(get_xlogger_color(_GREEN) + "[INFO");
+      break;
+
+    case _DEBUG:
+      log(get_xlogger_color(_CYAN) + "[DEBUG");
+      break;
+
+    case _WARN:
+      log(get_xlogger_color(_YELLOW) + "[WARN");
+      break;
+
+    case _CRITICAL:
+      log(get_xlogger_color(_MAGENTA) + "[CRITICAL");
+      break;
+
+    case _ERROR:
+      log(get_xlogger_color(_RED) + "[ERROR");
+      break;
+
+    case _FATAL:
+      log(get_xlogger_color(_BOLD_RED) + "[FATAL");
+      break;
+
+    default:
+      log(get_xlogger_color(_GREEN) + "[INFO");
+      break;
+    }
+    log(": " + get_timestamp() + "] ");
+    (log(std::forward<Args>(args)), ...);
+    log("\n" + get_xlogger_color(_RESET));
+  }
+};
+
+enum xlogger_type { _FILE, _CONSOLE };
+
+class xlogger : private xfile_logger, private xconsole_logger {
+private:
+  static xlogger *_logger;
+  bool _type_file;
+  bool _type_console;
+  std::mutex _mtx;
+
+public:
+  xlogger() : xfile_logger(), _type_console(true), _type_file(false) {}
+
+  xlogger(const std::string &filepath)
+      : xfile_logger(filepath), _type_console(true), _type_file(true) {}
+
+  virtual ~xlogger() {}
+
+  inline bool get_type_file() const { return this->_type_file; }
+
+  inline void set_type_file(bool type_file) { this->_type_file = type_file; }
+
+  inline bool get_type_console() const { return this->_type_console; }
+
+  inline void set_type_console(bool type_console) {
+    this->_type_console = type_console;
   }
 
   static xlogger *get_logger() {
     if (!_logger)
-      _logger = new xlogger;
+      _logger = new xlogger();
     return _logger;
   }
 
-  inline std::ofstream *get_file_handler() const { return this->_file_handler; }
+  static xlogger *get_logger(const std::string &filepath) {
+    if (!_logger)
+      _logger = new xlogger(filepath);
+    return _logger;
+  }
 
-  template <typename... Args> void log_multi(Args &&...args) {
-    switch (_log_level) {
-    case _INFO:
-      std::cout << _xlogger_color_map[_GREEN] << "[INFO";
-      if (_enable_file_log)
-        *_file_handler << "[INFO";
-      break;
-    case _DEBUG:
-      std::cout << _xlogger_color_map[_CYAN] << "[DEBUG";
-      if (_enable_file_log)
-        *_file_handler << "[DEBUG";
-      break;
-    case _WARN:
-      std::cout << _xlogger_color_map[_YELLOW] << "[WARN";
-      if (_enable_file_log)
-        *_file_handler << "[WARN";
-      break;
-    case _CRITICAL:
-      std::cout << _xlogger_color_map[_MAGENTA] << "[CRITICAL";
-      if (_enable_file_log)
-        *_file_handler << "[CRITICAL";
-      break;
-    case _ERROR:
-      std::cout << _xlogger_color_map[_RED] << "[ERROR";
-      if (_enable_file_log)
-        *_file_handler << "[ERROR";
-      break;
-    case _FATAL:
-      std::cout << _xlogger_color_map[_BOLD_RED] << "[FATAL";
-      if (_enable_file_log)
-        *_file_handler << "[FATAL";
-      break;
-    default:
-      std::cout << _xlogger_color_map[_GREEN] << "[INFO";
-      if (_enable_file_log)
-        *_file_handler << "[INFO";
+  template <typename... Args>
+  void logger(const xlogger_log_level &log_level, Args &&...args) {
+    std::lock_guard<std::mutex> locker(_mtx);
+    if (_type_file) {
+      xfile_logger::set_log_level(log_level);
+      xfile_logger::logger(args...);
     }
-    std::cout << ": " << get_timestamp() << "] " << _xlogger_color_map[_RESET];
-    if (_enable_file_log)
-      *_file_handler << ": " << get_timestamp() << "] ";
-    (log_single(std::forward<Args>(args)), ...);
-    std::cout << "\n";
-    if (_enable_file_log)
-      *_file_handler << "\n";
+    if (_type_console) {
+      xconsole_logger::set_log_level(log_level);
+      xconsole_logger::logger(args...);
+    }
   }
 };
 
@@ -156,44 +244,36 @@ xlogger *init_xlogger() {
   return logger;
 }
 
-void destroy_xlogger() {
-  if (xlogger::get_logger()->get_file_handler() &&
-      xlogger::get_logger()->get_file_handler()->is_open())
-    xlogger::get_logger()->get_file_handler()->close();
-
-  delete xlogger::get_logger();
+xlogger *init_xlogger(const std::string &filepath) {
+  xlogger *logger = logger->get_logger(filepath);
+  return logger;
 }
 
+void destroy_xlogger() { delete xlogger::xlogger::get_logger(); }
 } // namespace xlogger
 
 xlogger::xlogger *xlogger::xlogger::_logger = nullptr;
 
 #define INFO_X_LOG(...)                                                        \
-  xlogger::xlogger::get_logger()->set_log_level(                               \
-      xlogger::xlogger_log_level::_INFO);                                      \
-  xlogger::xlogger::get_logger()->log_multi(__VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_INFO,    \
+                                         __VA_ARGS__)
 
 #define DEBUG_X_LOG(...)                                                       \
-  xlogger::xlogger::get_logger()->set_log_level(                               \
-      xlogger::xlogger_log_level::_DEBUG);                                     \
-  xlogger::xlogger::get_logger()->log_multi(__VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_DEBUG,   \
+                                         __VA_ARGS__)
 
 #define WARN_X_LOG(...)                                                        \
-  xlogger::xlogger::get_logger()->set_log_level(                               \
-      xlogger::xlogger_log_level::_WARN);                                      \
-  xlogger::xlogger::get_logger()->log_multi(__VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_WARN,    \
+                                         __VA_ARGS__)
 
 #define CRITICAL_X_LOG(...)                                                    \
-  xlogger::xlogger::get_logger()->set_log_level(                               \
-      xlogger::xlogger_log_level::_CRITICAL);                                  \
-  xlogger::xlogger::get_logger()->log_multi(__VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(                                      \
+      xlogger::xlogger_log_level::_CRITICAL, __VA_ARGS__)
 
 #define ERROR_X_LOG(...)                                                       \
-  xlogger::xlogger::get_logger()->set_log_level(                               \
-      xlogger::xlogger_log_level::_ERROR);                                     \
-  xlogger::xlogger::get_logger()->log_multi(__VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_ERROR,   \
+                                         __VA_ARGS__)
 
 #define FATAL_X_LOG(...)                                                       \
-  xlogger::xlogger::get_logger()->set_log_level(                               \
-      xlogger::xlogger_log_level::_FATAL);                                     \
-  xlogger::xlogger::get_logger()->log_multi(__VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_FATAL,   \
+                                         __VA_ARGS__)
