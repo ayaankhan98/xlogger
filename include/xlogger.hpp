@@ -58,13 +58,15 @@ enum xlogger_color {
 
 enum xlogger_log_level { _INFO, _DEBUG, _WARN, _CRITICAL, _ERROR, _FATAL };
 
+enum xlogger_type { _FILE, _CONSOLE };
+
 class xlogger_core {
 private:
   xlogger_log_level _log_level;
   std::unordered_map<xlogger_color, std::string> _xlogger_color_map;
 
 public:
-  xlogger_core() {
+  xlogger_core() : _log_level(xlogger_log_level::_INFO) {
     _xlogger_color_map[_RESET] = "\033[0m";
     _xlogger_color_map[_BLACK] = "\033[30m";
     _xlogger_color_map[_RED] = "\033[31m";
@@ -86,17 +88,19 @@ public:
 
   virtual ~xlogger_core() {}
 
-  inline xlogger_log_level get_log_level() const { return this->_log_level; }
+  constexpr inline xlogger_log_level get_log_level() const {
+    return this->_log_level;
+  }
 
   virtual inline void set_log_level(const xlogger_log_level &log_level) {
     this->_log_level = log_level;
   }
 
-  inline std::string get_xlogger_color(const xlogger_color &color) {
+  inline const std::string &get_xlogger_color(const xlogger_color &color) {
     return this->_xlogger_color_map[color];
   }
 
-  const std::string get_timestamp() {
+  const std::string get_timestamp() const {
     auto current_instant = std::chrono::system_clock::now();
     auto current_instant_time_t =
         std::chrono::system_clock::to_time_t(current_instant);
@@ -113,7 +117,7 @@ private:
   std::ofstream *_file_handler;
   std::string _filepath;
 
-  template <typename Args> void log(Args &&arg) {
+  template <typename Args> constexpr void log(Args &&arg) const {
     *_file_handler << std::forward<decltype(arg)>(arg);
   }
 
@@ -130,7 +134,7 @@ public:
       _file_handler->close();
   }
 
-  template <typename... Args> void logger(Args &&...args) {
+  template <typename... Args> constexpr void logger(Args &&...args) const {
     switch (get_log_level()) {
     case _INFO:
       log("[INFO");
@@ -168,7 +172,7 @@ public:
 
 class xconsole_logger : public xlogger_core {
 private:
-  template <typename Args> void log(Args &&arg) {
+  template <typename Args> constexpr void log(Args &&arg) const {
     std::cout << std::forward<decltype(arg)>(arg);
   }
 
@@ -176,7 +180,7 @@ public:
   xconsole_logger() {}
   virtual ~xconsole_logger() {}
 
-  template <typename... Args> void logger(Args &&...args) {
+  template <typename... Args> constexpr void logger(Args &&...args) {
     switch (get_log_level()) {
     case _INFO:
       log(get_xlogger_color(_GREEN) + "[INFO");
@@ -212,8 +216,6 @@ public:
   }
 };
 
-enum xlogger_type { _FILE, _CONSOLE };
-
 class xlogger : private xfile_logger, private xconsole_logger {
 private:
   static xlogger *_logger;
@@ -229,13 +231,15 @@ public:
 
   virtual ~xlogger() {}
 
-  inline bool get_type_file() const { return this->_type_file; }
+  constexpr inline bool get_type_file() const { return this->_type_file; }
 
-  inline void set_type_file(bool type_file) { this->_type_file = type_file; }
+  constexpr inline void set_type_file(bool type_file) {
+    this->_type_file = type_file;
+  }
 
-  inline bool get_type_console() const { return this->_type_console; }
+  constexpr inline bool get_type_console() const { return this->_type_console; }
 
-  inline void set_type_console(bool type_console) {
+  constexpr inline void set_type_console(bool type_console) {
     this->_type_console = type_console;
   }
 
@@ -275,7 +279,10 @@ xlogger *init_xlogger(const std::string &filepath) {
   return logger;
 }
 
-void destroy_xlogger() { delete xlogger::xlogger::get_logger(); }
+void destroy_xlogger() {
+  if (xlogger::xlogger::get_logger())
+    delete xlogger::xlogger::get_logger();
+}
 } // namespace xlogger
 
 xlogger::xlogger *xlogger::xlogger::_logger = nullptr;

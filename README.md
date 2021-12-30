@@ -52,6 +52,8 @@ logging variables as well as l-values.
       /// Initiate a xlogger context
       xlogger::init_xlogger();
 
+      INFO_X_LOG("Welcome to xlogger");
+
       const double PI = 3.145;
       INFO_X_LOG("Value of PI = ", PI);
 
