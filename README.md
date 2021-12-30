@@ -1,7 +1,7 @@
 # xlogger
 
 
-![xlogger](assets/xlogger.png?raw=true "xlogger")
+![xlogger](assets/xlogger_1_.svg?raw=true "xlogger")
 
 xlogger is a simple header only logging provider for C++ applications. Using
 xlogger no need to worry about anything just copy the header file in your
