@@ -20,6 +20,15 @@ logging variables as well as l-values.
 ### Usage
 - copy `xlogger.hpp` file and paste it into your project `include` directory.
 
+- #### Available Logging Macros
+  - `INFO_X_LOG()`
+  - `DEBUG_X_LOG()`
+  - `WARN_X_LOG()`
+  - `CRITICAL_X_LOG()`
+  - `ERROR_X_LOG()`
+  - `FATAL_X_LOG()`
+
+
 - #### Logging in Console
   Console logger is enabled by default. Need not to do anything just initiate
   the xlogger context and start using it. And at the end don't forget to
@@ -27,38 +36,40 @@ logging variables as well as l-values.
 
   Code example:
   ```C++
-  #include <xlogger.hpp>
+    #include <string>
+    #include <unordered_map>
+    #include <xlogger.hpp>
 
-  int main() {
-    int x = 12;
+    std::unordered_map<std::string, std::string> fetch_from_server() {
+      std::unordered_map<std::string, std::string> response;
+      response["username"] = "foo bar";
+      response["email"] = "foo@example.com";
+      response["dob"] = "10-10-1999";
+      return response;
+    }
 
-    /// first initiate the xlogger
-    xlogger::init_xlogger();
+    int main() {
+      /// Initiate a xlogger context
+      xlogger::init_xlogger();
 
-    INFO_X_LOG("some information...");              /// uses log level INFO
-    ++x;
-    DEBUG_X_LOG("value of x is: ", x);              /// uses log level DEBUG
+      INFO_X_LOG("Welcome to xlogger");
 
-    std::string test_val = "Test string";
-    WARN_X_LOG("spawing extra instance", test_val); /// uses log level WARN
-    CRITICAL_X_LOG("executing critial operation");  /// uses log level CRITICAL
-    ERROR_X_LOG("Segmentation fault");              /// uses log level ERROR
-    FATAL_X_LOG("Fatal error encountered");         /// uses log level FATAL
+      const double PI = 3.145;
+      INFO_X_LOG("Value of PI = ", PI);
 
-    const double PI = 3.1458;
-    INFO_X_LOG("PI = ", PI, "and x = ", x, "with test_val = ", test_val);
+      auto response = fetch_from_server();
+      DEBUG_X_LOG("Response from server: [username: ", response["username"],
+                 ", email: ", response["email"], ", dob", response["dob"], "]");
 
-    INFO_X_LOG(12, 24, 36, PI, test_val, "Hello world");
-
-    /// Destroy the xlogger context before you exit
-    xlogger::destroy_xlogger();
-
-    return 0;
-  }
+      /// Destroy the xlogger context before you exit
+      xlogger::destroy_xlogger();
+      return 0;
+    }
   ```
 
 - #### Using a File logger
   File logger can be used to preserve the logs on local disk.
+
   code example:
 
   ```C++
@@ -70,25 +81,22 @@ logging variables as well as l-values.
 
     /// Log some stuff as usuall
     INFO_X_LOG("Loggin information");
-  
+
     /// Destroy xlogger context
     xlogger::destroy_xlogger();
   }
   ```
 
   if you wish to just use xlogger as file logger, you can disable console based
-  logging using
+  logging
 
-  ```
-  /// execute set_type_console() method on xlogger context object with false to
-  disable console logging
+  ```C++
   xlogger::init_xlogger("log_0_file.xlog")->set_type_console(false);
-
-  /// now it will save logs only in file
   ```
 
 - #### Using `xlogger` in Multithreading environment
   xlogger provide thread safe logging. File logs and console logs are in sync.
+
   code example:
 
   ```C++
