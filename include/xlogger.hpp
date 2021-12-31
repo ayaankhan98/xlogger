@@ -124,9 +124,14 @@ private:
 public:
   xfile_logger() { _file_handler = new std::ofstream(); }
 
-  xfile_logger(const std::string &filepath) : _filepath(filepath) {
+  explicit xfile_logger(const std::string &filepath) : _filepath(filepath) {
     _file_handler = new std::ofstream();
     _file_handler->open(_filepath);
+  }
+
+  explicit xfile_logger(xfile_logger& xf) {
+    this->_file_handler = xf._file_handler;
+    this->_filepath = xf._filepath;
   }
 
   virtual ~xfile_logger() {
@@ -226,7 +231,7 @@ private:
 public:
   xlogger() : xfile_logger(), _type_console(true), _type_file(false) {}
 
-  xlogger(const std::string &filepath)
+  explicit xlogger(const std::string &filepath)
       : xfile_logger(filepath), _type_console(true), _type_file(true) {}
 
   virtual ~xlogger() {}
