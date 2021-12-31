@@ -219,8 +219,8 @@ public:
 class xlogger : private xfile_logger, private xconsole_logger {
 private:
   static xlogger *_logger;
-  bool _type_file;
   bool _type_console;
+  bool _type_file;
   std::mutex _mtx;
 
 public:
@@ -270,13 +270,11 @@ public:
 };
 
 xlogger *init_xlogger() {
-  xlogger *logger = logger->get_logger();
-  return logger;
+  return xlogger::get_logger();
 }
 
 xlogger *init_xlogger(const std::string &filepath) {
-  xlogger *logger = logger->get_logger(filepath);
-  return logger;
+ return xlogger::get_logger(filepath);
 }
 
 void destroy_xlogger() {
