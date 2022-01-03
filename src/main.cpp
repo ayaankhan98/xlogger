@@ -19,8 +19,7 @@ int main() {
   INFO_X_LOG("Value of PI = ", PI);
 
   auto response = fetch_from_server();
-  DEBUG_X_LOG("Response from server: [username: ", response["username"],
-              ", email: ", response["email"], ", dob", response["dob"], "]");
+  DEBUG_X_LOG("Response from server: ", response);
 
   /// Destroy the xlogger context before you exit
   xlogger::destroy_xlogger();
