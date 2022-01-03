@@ -28,12 +28,23 @@
 
 #include <chrono>
 #include <cstdarg>
+#include <cstddef>
 #include <ctime>
+#include <deque>
 #include <fstream>
 #include <iostream>
+#include <list>
 #include <mutex>
+#include <ostream>
+#include <set>
 #include <sstream>
+#include <string>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
+#include <vector>
+#include <map>
+#include <array>
 
 namespace xlogger {
 enum xlogger_color {
@@ -112,6 +123,60 @@ public:
   }
 };
 
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
+  os << "[";
+  for (decltype(vec.size()) i = 0; i < vec.size(); ++i) {
+    os << vec[i];
+    if (i != vec.size() - 1)
+      os << ", ";
+  }
+  os << "]\n";
+  return os;
+}
+
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const std::list<T> &l) {
+  os << "[";
+  for (decltype(l.size()) i = 0; i < l.size(); ++i) {
+    os << l.front();
+    if (i != l.size() - 1)
+      os << ", ";
+  }
+  os << "]\n";
+  return os;
+}
+
+template <typename K, typename V>
+std::ostream &operator<<(std::ostream &os,
+                         const std::unordered_map<K, V> &hash_map) {
+  os << "[";
+  for (auto k_v_iterator_pair = hash_map.begin();
+       k_v_iterator_pair != hash_map.end();) {
+    os << k_v_iterator_pair->first << ": " << k_v_iterator_pair->second;
+    if (++k_v_iterator_pair != hash_map.end()) {
+      os << ", ";
+    }
+  }
+  os << "]\n";
+  return os;
+}
+
+template <typename K, typename V>
+std::ostream &operator<<(std::ostream &os,
+                         const std::map<K, V> &m) {
+  os << "[";
+  for (auto k_v_iterator_pair = m.begin();
+       k_v_iterator_pair != m.end();) {
+    os << k_v_iterator_pair->first << ": " << k_v_iterator_pair->second;
+    if (++k_v_iterator_pair != m.end()) {
+      os << ", ";
+    }
+  }
+  os << "]\n";
+  return os;
+}
+
 class xfile_logger : public xlogger_core {
 private:
   std::ofstream *_file_handler;
@@ -129,7 +194,7 @@ public:
     _file_handler->open(_filepath);
   }
 
-  explicit xfile_logger(xfile_logger& xf) {
+  explicit xfile_logger(xfile_logger &xf) {
     this->_file_handler = xf._file_handler;
     this->_filepath = xf._filepath;
   }
@@ -177,15 +242,15 @@ public:
 
 class xconsole_logger : public xlogger_core {
 private:
-  template <typename Args> constexpr void log(Args &&arg) const {
-    std::cout << std::forward<decltype(arg)>(arg);
-  }
-
 public:
   xconsole_logger() {}
   virtual ~xconsole_logger() {}
 
-  template <typename... Args> constexpr void logger(Args &&...args) {
+  template <typename Args> void log(Args &&arg) const {
+    std::cout << std::forward<decltype(arg)>(arg);
+  }
+
+  template <typename... Args> void logger(Args &&...args) {
     switch (get_log_level()) {
     case _INFO:
       log(get_xlogger_color(_GREEN) + "[INFO");
@@ -274,12 +339,10 @@ public:
   }
 };
 
-xlogger *init_xlogger() {
-  return xlogger::get_logger();
-}
+xlogger *init_xlogger() { return xlogger::get_logger(); }
 
 xlogger *init_xlogger(const std::string &filepath) {
- return xlogger::get_logger(filepath);
+  return xlogger::get_logger(filepath);
 }
 
 void destroy_xlogger() {
