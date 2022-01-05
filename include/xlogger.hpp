@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstdarg>
 #include <cstddef>
@@ -34,6 +35,7 @@
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <map>
 #include <mutex>
 #include <ostream>
 #include <set>
@@ -43,8 +45,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <map>
-#include <array>
 
 namespace xlogger {
 enum xlogger_color {
@@ -163,11 +163,9 @@ std::ostream &operator<<(std::ostream &os,
 }
 
 template <typename K, typename V>
-std::ostream &operator<<(std::ostream &os,
-                         const std::map<K, V> &m) {
+std::ostream &operator<<(std::ostream &os, const std::map<K, V> &m) {
   os << "[";
-  for (auto k_v_iterator_pair = m.begin();
-       k_v_iterator_pair != m.end();) {
+  for (auto k_v_iterator_pair = m.begin(); k_v_iterator_pair != m.end();) {
     os << k_v_iterator_pair->first << ": " << k_v_iterator_pair->second;
     if (++k_v_iterator_pair != m.end()) {
       os << ", ";
@@ -204,14 +202,17 @@ public:
       _file_handler->close();
   }
 
-  template <typename... Args> constexpr void logger(Args &&...args) const {
+  template <typename... Args>
+  constexpr void logger(const std::string &log_reference,
+                        Args &&...args) const {
+    log(log_reference);
     switch (get_log_level()) {
     case _INFO:
       log("[INFO");
       break;
 
     case _DEBUG:
-      log("[DEBUG");
+      log("DEBUG");
       break;
 
     case _WARN:
@@ -231,7 +232,7 @@ public:
       break;
 
     default:
-      log("[INFO");
+      log("-- [INFO");
       break;
     }
     log(": " + get_timestamp() + "] ");
@@ -250,7 +251,9 @@ public:
     std::cout << std::forward<decltype(arg)>(arg);
   }
 
-  template <typename... Args> void logger(Args &&...args) {
+  template <typename... Args>
+  void logger(const std::string &log_reference, Args &&...args) {
+    log(log_reference);
     switch (get_log_level()) {
     case _INFO:
       log(get_xlogger_color(_GREEN) + "[INFO");
@@ -326,15 +329,20 @@ public:
   }
 
   template <typename... Args>
-  void logger(const xlogger_log_level &log_level, Args &&...args) {
+  void logger(const char *file, const int line,
+              const xlogger_log_level &log_level, Args &&...args) {
+    const std::string log_reference(
+        xconsole_logger::get_xlogger_color(xlogger_color::_BOLD_YELLOW) + file +
+        std::string(": ") + std::to_string(line) + std::string(" -- ") +
+        xconsole_logger::get_xlogger_color(xlogger_color::_RESET));
     std::lock_guard<std::mutex> locker(_mtx);
     if (_type_file) {
       xfile_logger::set_log_level(log_level);
-      xfile_logger::logger(args...);
+      xfile_logger::logger(log_reference, args...);
     }
     if (_type_console) {
       xconsole_logger::set_log_level(log_level);
-      xconsole_logger::logger(args...);
+      xconsole_logger::logger(log_reference, args...);
     }
   }
 };
@@ -354,24 +362,24 @@ void destroy_xlogger() {
 xlogger::xlogger *xlogger::xlogger::_logger = nullptr;
 
 #define INFO_X_LOG(...)                                                        \
-  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_INFO,    \
-                                         __VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(                                      \
+      __FILE__, __LINE__, xlogger::xlogger_log_level::_INFO, __VA_ARGS__)
 
 #define DEBUG_X_LOG(...)                                                       \
-  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_DEBUG,   \
-                                         __VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(                                      \
+      __FILE__, __LINE__, xlogger::xlogger_log_level::_DEBUG, __VA_ARGS__)
 
 #define WARN_X_LOG(...)                                                        \
-  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_WARN,    \
-                                         __VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(                                      \
+      __FILE__, __LINE__, xlogger::xlogger_log_level::_WARN, __VA_ARGS__)
 
 #define CRITICAL_X_LOG(...)                                                    \
   xlogger::xlogger::get_logger()->logger(                                      \
-      xlogger::xlogger_log_level::_CRITICAL, __VA_ARGS__)
+      __FILE__, __LINE__, xlogger::xlogger_log_level::_CRITICAL, __VA_ARGS__)
 
 #define ERROR_X_LOG(...)                                                       \
-  xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_ERROR,   \
-                                         __VA_ARGS__)
+  xlogger::xlogger::get_logger()->logger(                                      \
+      __FILE__, __LINE__, xlogger::xlogger_log_level::_ERROR, __VA_ARGS__)
 
 #define FATAL_X_LOG(...)                                                       \
   xlogger::xlogger::get_logger()->logger(xlogger::xlogger_log_level::_FATAL,   \
